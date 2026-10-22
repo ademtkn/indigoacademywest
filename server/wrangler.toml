@@ -1,0 +1,10 @@
+name = "indigo-west-assistant"
+main = "worker.mjs"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# Comma-separated list of sites allowed to call the assistant (add the school's own domain when it is connected)
+ALLOWED_ORIGINS = "https://ademtkn.github.io"
+
+# Secret (never commit it):  npx wrangler secret put ANTHROPIC_API_KEY

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Indigo Academy West</title>
+  <meta name="claude:viewport-fit-sides" content="cover">
+  <meta name="description" content="Indigo Academy West is a private school for boys and girls in Bishkek, Grades 1–12. Singapore maths, robotics, chess and komuz in the timetable, more English with native-speaking teachers, and a Cambridge programme from Grade 7.">
+  <meta name="theme-color" content="#0F3A2C">
+  <link rel="icon" type="image/png" href="assets/img/logo-round.png">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Josefin+Sans:wght@600&family=Manrope:wght@400;600&display=swap">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="root-body">
+<main class="root">
+  <div class="root-sky" aria-hidden="true">
+    <svg class="root-rings" viewBox="0 0 1000 640" preserveAspectRatio="xMidYMid slice">
+      <ellipse class="ring r1" cx="500" cy="250" rx="300" ry="190"/>
+      <ellipse class="ring r2" cx="500" cy="250" rx="400" ry="255"/>
+      <ellipse class="ring r3" cx="500" cy="250" rx="520" ry="330"/>
+    </svg>
+    <span class="glint g1"></span><span class="glint g2"></span><span class="glint g3"></span><span class="glint g4"></span><span class="glint g5"></span>
+  </div>
+  <div class="root-inner">
+    <img src="assets/img/logo-round.png" alt="Indigo Academy" class="root-emblem" width="588" height="588">
+    <p class="root-lock"><span class="rl-name">West</span><span class="rl-sub">Primary &amp; High School</span></p>
+    <h1 class="welcome" aria-label="Welcome to Indigo Academy West! / Indigo Academy Westке кош келиңиздер! / Добро пожаловать в Indigo Academy West!"><p class="welcome-line is-on" lang="en" data-greet="en">Welcome to Indigo Academy West!</p><p class="welcome-line" lang="ky" data-greet="ky" aria-hidden="true">Indigo Academy Westке кош келиңиздер!</p><p class="welcome-line" lang="ru" data-greet="ru" aria-hidden="true">Добро пожаловать в Indigo Academy West!</p></h1>
+    <p class="root-pick"><span lang="en">Choose your language</span><span aria-hidden="true">·</span><span lang="ky">Тилди тандаңыз</span><span aria-hidden="true">·</span><span lang="ru">Выберите язык</span></p>
+    <nav class="picks" aria-label="Language"><a class="pick" href="en/index.html" data-lang="en" lang="en">
+      <span class="pick-label">EN</span>
+      <span class="pick-sub">Primary &amp; high school, Grades 1–12.</span>
+      <span class="pick-go">Continue in English <span aria-hidden="true">→</span></span>
+    </a><a class="pick" href="ky/index.html" data-lang="ky" lang="ky">
+      <span class="pick-label">KG</span>
+      <span class="pick-sub">Башталгыч жана орто мектеп, 1–12-класстар.</span>
+      <span class="pick-go">Кыргызча улантуу <span aria-hidden="true">→</span></span>
+    </a><a class="pick" href="ru/index.html" data-lang="ru" lang="ru">
+      <span class="pick-label">RU</span>
+      <span class="pick-sub">Начальная и старшая школа, 1–12 классы.</span>
+      <span class="pick-go">Продолжить на русском <span aria-hidden="true">→</span></span>
+    </a></nav>
+    <p class="root-foot">ул. Московская, 191а, Бишкек · <a href="https://www.instagram.com/indigo_academy_west/" target="_blank" rel="noopener">@indigo_academy_west</a></p>
+  </div>
+</main>
+<script>
+(function(){
+  var KEY='iaw-lang';
+  document.querySelectorAll('[data-lang]').forEach(function(a){a.addEventListener('click',function(){try{localStorage.setItem(KEY,a.dataset.lang)}catch(e){}});});
+  // Greeting cycles through the three languages; hovering a card shows its own greeting.
+  var lines=[].slice.call(document.querySelectorAll('[data-greet]')), i=0, paused=false;
+  function show(code){lines.forEach(function(l,n){var on=l.dataset.greet===code;l.classList.toggle('is-on',on);if(on)i=n;});}
+  document.querySelectorAll('.pick').forEach(function(c){
+    c.addEventListener('mouseenter',function(){paused=true;show(c.dataset.lang);});
+    c.addEventListener('focus',function(){paused=true;show(c.dataset.lang);});
+    c.addEventListener('mouseleave',function(){paused=false;});
+  });
+  if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    setInterval(function(){if(!paused){i=(i+1)%lines.length;show(lines[i].dataset.greet);}},3800);
+  }
+  try{var s=localStorage.getItem(KEY);if(s&&/^(ky|ru|en)$/.test(s)){location.replace(s+'/index.html');}}catch(e){}
+})();
+</script>
+</body>
+</html>
