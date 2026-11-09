@@ -3,89 +3,39 @@
 //        add --preview to also write docs/preview.html for the Claude artifact preview
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { icon } from './icons.mjs';
-import ky from './content/ky.mjs';
-import ru from './content/ru.mjs';
-import en from './content/en.mjs';
+import { icon, ICONS } from './icons.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'docs');
+// All texts, menu, staff and photo slots live in content/*.json, which the admin panel (admin/) edits.
+const readJSON = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, 'content', f), 'utf8'));
+const en = readJSON('en.json'), ky = readJSON('ky.json'), ru = readJSON('ru.json');
+const DATA = readJSON('site.json');
 const LANGS = [en, ky, ru]; // first = default language
 
-// ---------- School facts (edit here) ----------
-const SITE = {
-  // Until a domain is connected the site lives on GitHub Pages' own address.
-  // To switch: url → 'https://<domain>' and customDomain → '<domain>'.
-  url: 'https://ademtkn.github.io/indigoacademywest',
-  customDomain: '',
-  phones: [
-    { label: '+996 557 12 33 33', tel: '+996557123333' },
-  ],
-  whatsapp: '996557123333',
-  instagram: 'https://www.instagram.com/indigo_academy_west/',
-  handle: '@indigo_academy_west',
-  map: 'https://2gis.kg/bishkek/firm/70000001033903228',
-  network: 'https://indigo.edu.kg/',
-  // AI assistant backend (see server/). Leave empty to answer from the site's own
-  // content with on-page search only; set to e.g. '/api/chat' once the Worker is deployed.
-  aiEndpoint: '',
-};
-
-// Staff list. Put a photo at assets/img/staff/<id>.jpg and fill in `name`
-// (one value per language, or a single string) to replace the placeholder.
-const STAFF = [
-  { id: 'director', d: 'lead', name: null },
-  { id: 'deputyPrimary', d: 'lead', name: null },
-  { id: 'deputySecondary', d: 'lead', name: null },
-  { id: 'cambridge', d: 'lead', name: null },
-  { id: 'primary1', d: 'primary', name: null },
-  { id: 'primary2', d: 'primary', name: null },
-  { id: 'primary3', d: 'primary', name: null },
-  { id: 'primary4', d: 'primary', name: null },
-  { id: 'primary5', d: 'primary', name: null },
-  { id: 'primary6', d: 'primary', name: null },
-  { id: 'native1', d: 'english', name: null },
-  { id: 'native2', d: 'english', name: null },
-  { id: 'english1', d: 'english', name: null },
-  { id: 'english2', d: 'english', name: null },
-  { id: 'math', d: 'secondary', name: null },
-  { id: 'science', d: 'secondary', name: null },
-  { id: 'chembio', d: 'secondary', name: null },
-  { id: 'cs', d: 'secondary', name: null },
-  { id: 'humanities', d: 'secondary', name: null },
-  { id: 'russian', d: 'secondary', name: null },
-  { id: 'kyrgyz', d: 'secondary', name: null },
-  { id: 'robotics', d: 'extra', name: null },
-  { id: 'chess', d: 'extra', name: null },
-  { id: 'komuz', d: 'extra', name: null },
-  { id: 'art', d: 'extra', name: null },
-  { id: 'pe', d: 'extra', name: null },
-  { id: 'psychologist', d: 'support', name: null },
-  { id: 'nurse', d: 'support', name: null },
-  { id: 'admissions', d: 'support', name: null },
-];
-
-const PAGES = [
-  { key: 'home', file: 'index.html' },
-  { key: 'about', file: 'about.html' },
-  { key: 'primary', file: 'primary.html' },
-  { key: 'secondary', file: 'secondary.html' },
-  { key: 'admissions', file: 'admissions.html' },
-  { key: 'life', file: 'school-life.html' },
-  { key: 'staff', file: 'staff.html' },
-  { key: 'news', file: 'news.html' },
-  { key: 'contact', file: 'contact.html' },
-];
-const fileOf = (k) => PAGES.find((p) => p.key === k).file;
+// ---------- School facts, staff and pages (content/site.json) ----------
+const SITE = DATA.school;
+// Staff: { id, dept, name: {en,ky,ru}, role: {en,ky,ru}, photo: 'staff/<id>.jpg' }
+const STAFF = DATA.staff;
+// Pages in menu order. Built-in pages have their own template; `custom: true` pages use the generic one.
+// `menu: false` keeps a page out of the header and footer menus (it is still published).
+const PAGES = DATA.pages;
+const MENU = PAGES.filter((p) => p.menu !== false);
+const fileOf = (k) => (PAGES.find((p) => p.key === k) || PAGES[0]).file;
+const local = (v, t) => (v == null ? '' : typeof v === 'string' ? v : v[t.code] || v.en || '');
 
 // ---------- helpers ----------
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const photoExists = (rel) => fs.existsSync(path.join(ROOT, 'assets', 'img', rel));
+const imgPath = (rel) => path.join(ROOT, 'assets', 'img', rel);
+const photoExists = (rel) => !!rel && fs.existsSync(imgPath(rel));
+// ?v=<content hash> so a photo replaced in the admin panel shows at once instead of the browser's cached copy
+const photoUrl = (rel) => `../assets/img/${rel}?v=${crypto.createHash('sha1').update(fs.readFileSync(imgPath(rel))).digest('hex').slice(0, 8)}`;
 
 // Photo frame: shows the real photo when assets/img/<rel> exists, otherwise a designed placeholder.
 function photo(rel, tone = 'green', ico = 'book', cls = '') {
-  const img = photoExists(rel) ? `<img src="../assets/img/${rel}" alt="" loading="lazy">` : '';
+  const img = photoExists(rel) ? `<img src="${photoUrl(rel)}" alt="" loading="lazy">` : '';
   return `<figure class="ph ph--${tone} ${cls}">${img}<span class="ph-emblem" aria-hidden="true"></span>${img ? '' : icon(ico, 'ph-ico')}</figure>`;
 }
 
@@ -125,10 +75,10 @@ function signature(s, cls = '') {
 
 // ---------- layout ----------
 function layout(t, page, main) {
-  const p = t[page.key];
+  const p = t[page.key] || { title: t.nav[page.key] || '', descr: '' };
   const title = page.key === 'home' ? p.title : `${p.title} | ${t.brand.full}`;
   const alternates = LANGS.map((l) => `<link rel="alternate" hreflang="${l.htmlLang}" href="${SITE.url}/${l.code}/${page.file}">`).join('\n  ');
-  const navItems = PAGES.filter((x) => x.key !== 'home')
+  const navItems = MENU.filter((x) => x.key !== 'home')
     .map((x) => `<li><a href="${x.file}"${x.key === page.key ? ' aria-current="page"' : ''}>${esc(t.nav[x.key])}</a></li>`).join('');
   const langLinks = LANGS.map((l) =>
     `<a href="../${l.code}/${page.file}" hreflang="${l.htmlLang}" lang="${l.htmlLang}" data-lang="${l.code}"${l.code === t.code ? ' aria-current="true"' : ''} title="${esc(l.langName)}">${l.label}</a>`).join('');
@@ -189,7 +139,7 @@ ${footer(t)}
 
 function footer(t) {
   const c = t.common;
-  const links = PAGES.map((x) => `<li><a href="${x.file}">${esc(t.nav[x.key])}</a></li>`).join('');
+  const links = MENU.map((x) => `<li><a href="${x.file}">${esc(t.nav[x.key])}</a></li>`).join('');
   return `<footer class="site-footer">
   <div class="wrap ftr">
     <div class="ftr-brand">
@@ -229,7 +179,7 @@ function footer(t) {
 const arc = `<svg class="band-arc" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true"><path d="M0 80V30C300 74 560 0 720 0s420 74 720 30v50z"/></svg>`;
 
 function pageHero(t, key) {
-  const p = t[key];
+  const p = t[key] || {};
   return `<section class="band band--page">
   <div class="wrap band-inner">
     <nav class="crumbs" aria-label="breadcrumb"><a href="index.html">${esc(t.nav.home)}</a><span aria-hidden="true">/</span><span>${esc(t.nav[key])}</span></nav>
@@ -610,15 +560,14 @@ ${visitBand(t)}`;
 
   staff(t) {
     const s = t.staff;
-    const depts = Object.keys(s.depts);
-    const nameOf = (m) => (m.name == null ? null : typeof m.name === 'string' ? m.name : m.name[t.code]);
+    const depts = Object.keys(s.depts).filter((d) => STAFF.some((m) => m.dept === d));
     const card = (m) => {
-      const name = nameOf(m);
-      return `<li class="person" data-dept="${m.d}">
-        ${photo(`staff/${m.id}.jpg`, m.d === 'lead' ? 'forest' : m.d === 'english' ? 'green' : 'cream', 'users', 'ph--portrait')}
+      const name = local(m.name, t);
+      return `<li class="person" data-dept="${m.dept}">
+        ${photo(m.photo, m.dept === 'lead' ? 'forest' : m.dept === 'english' ? 'green' : 'cream', 'users', 'ph--portrait')}
         <div class="person-body">
           <h3${name ? '' : ' class="is-ph"'}>${esc(name || s.namePh)}</h3>
-          <p class="person-role">${esc(s.roles[m.id])}</p>
+          <p class="person-role">${esc(local(m.role, t))}</p>
         </div>
       </li>`;
     };
@@ -631,7 +580,7 @@ ${visitBand(t)}`;
     </div>
     ${depts.map((d) => `<section class="dept" data-dept-block="${d}">
       <h2 class="dept-title">${esc(s.depts[d])}</h2>
-      <ul class="people ${d === 'lead' ? 'people--lead' : ''}">${STAFF.filter((m) => m.d === d).map(card).join('')}</ul>
+      <ul class="people ${d === 'lead' ? 'people--lead' : ''}">${STAFF.filter((m) => m.dept === d).map(card).join('')}</ul>
     </section>`).join('')}
     <p class="note center">${esc(s.photosNote)} <a href="${SITE.instagram}" target="_blank" rel="noopener">${SITE.handle}</a></p>
   </div>
@@ -722,6 +671,29 @@ ${visitBand(t)}`;
   },
 };
 
+// Generic template for pages added in the admin panel: hero + sections (eyebrow, title, text, optional photo)
+function customPage(t, page) {
+  const p = t[page.key] || {};
+  const paras = (txt) => String(txt || '').split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean)
+    .map((x) => `<p>${esc(x).replace(/\n/g, '<br>')}</p>`).join('');
+  const tones = ['green', 'cream', 'forest'];
+  return `${pageHero(t, page.key)}
+${(p.sections || []).map((x, i) => {
+    const pic = photoExists(x.image);
+    return `<section class="sec${i % 2 ? ' sec--mist' : ''}">
+  <div class="wrap ${pic ? `split${i % 2 ? ' split--rev' : ''}` : 'narrow'}">
+    <div class="prose">
+      ${x.eyebrow ? `<p class="eyebrow">${esc(x.eyebrow)}</p>` : ''}
+      ${x.title ? `<h2>${esc(x.title)}</h2>` : ''}
+      ${paras(x.body)}
+    </div>
+    ${pic ? photo(x.image, tones[i % 3], 'book', 'ph--tall') : ''}
+  </div>
+</section>`;
+  }).join('\n')}
+${visitBand(t)}`;
+}
+
 function contactLines(t) {
   return `<ul class="contact-lines">${SITE.phones.map((p) => `<li>${icon('phone')}<a href="tel:${p.tel}">${p.label}</a></li>`).join('')}</ul>`;
 }
@@ -744,12 +716,14 @@ function visitBand(t) {
 }
 
 // ---------- AI assistant: knowledge base built from the site content ----------
+// Keys whose value is the same in every language (icons, image paths); never read as text
+const SHARED_KEYS = ['icon', 'image'];
 const ANCHORS = { 'about.director': '#director', 'primary.singapore': '#singapore', 'primary.english': '#english', 'secondary.pathway': '#cambridge' };
 const collect = (v) => {
   if (v == null) return [];
   if (typeof v === 'string') return [v];
   if (Array.isArray(v)) return v.flatMap(collect);
-  if (typeof v === 'object') return Object.entries(v).filter(([k]) => k !== 'icon').flatMap(([, x]) => collect(x));
+  if (typeof v === 'object') return Object.entries(v).filter(([k]) => !SHARED_KEYS.includes(k)).flatMap(([, x]) => collect(x));
   return [];
 };
 
@@ -759,10 +733,11 @@ function knowledge(t) {
     text: [].concat(lines).map((x) => x.replace(/\s+/g, ' ').trim()).filter((x) => x && x !== title).join('\n') });
   for (const pg of PAGES) {
     const p = t[pg.key];
+    if (!p) continue;
     const name = t.nav[pg.key];
     add(name, pg.file, p.title, [p.grades, p.lead || p.descr].filter(Boolean));
     for (const [k, sec] of Object.entries(p)) {
-      if (typeof sec !== 'object' || ['roles', 'depts', 'form'].includes(k)) continue;
+      if (typeof sec !== 'object' || ['depts', 'form'].includes(k)) continue;
       const url = pg.file + (ANCHORS[`${pg.key}.${k}`] || '');
       if (k === 'faq') { sec.items.forEach((x) => add(name, url, x.q, x.a)); continue; }
       const lines = Array.isArray(sec) ? sec.map((x) => collect(x).join(' ')) : sec.items
@@ -774,10 +749,10 @@ function knowledge(t) {
   }
   const s = t.staff;
   add(t.nav.staff, fileOf('staff'), s.title, Object.keys(s.depts).map((d) =>
-    `${s.depts[d]}: ${STAFF.filter((m) => m.d === d).map((m) => {
-      const n = m.name == null ? null : typeof m.name === 'string' ? m.name : m.name[t.code];
-      return n ? `${n} (${s.roles[m.id]})` : s.roles[m.id];
-    }).join('; ')}`).concat(STAFF.some((m) => m.name) ? [] : ['Staff names are not published on the website yet.']));
+    `${s.depts[d]}: ${STAFF.filter((m) => m.dept === d).map((m) => {
+      const n = local(m.name, t), r = local(m.role, t);
+      return n ? `${n} (${r})` : r;
+    }).join('; ')}`).concat(STAFF.some((m) => local(m.name, t)) ? [] : ['Staff names are not published on the website yet.']));
   const c = t.common;
   add(t.nav.contact, fileOf('contact'), t.contact.title, [
     `${c.address}.`, `${c.phones}: ${SITE.phones.map((p) => p.label).join(', ')}.`, `WhatsApp: +${SITE.whatsapp}.`,
@@ -879,13 +854,16 @@ ${script}
 fs.rmSync(DIST, { recursive: true, force: true });
 fs.mkdirSync(DIST, { recursive: true });
 fs.cpSync(path.join(ROOT, 'assets'), path.join(DIST, 'assets'), { recursive: true });
+// Admin panel: a static app that edits content/ and assets/img/ through the GitHub API (see admin/README in README.md)
+fs.cpSync(path.join(ROOT, 'admin'), path.join(DIST, 'admin'), { recursive: true });
+fs.writeFileSync(path.join(DIST, 'admin', 'icons.json'), JSON.stringify(ICONS));
 
 let count = 0;
 for (const t of LANGS) {
   const dir = path.join(DIST, t.code);
   fs.mkdirSync(dir, { recursive: true });
   for (const page of PAGES) {
-    fs.writeFileSync(path.join(dir, page.file), layout(t, page, render[page.key](t)));
+    fs.writeFileSync(path.join(dir, page.file), layout(t, page, page.custom ? customPage(t, page) : render[page.key](t)));
     count++;
   }
 }
@@ -906,5 +884,5 @@ ${LANGS.flatMap((l) => PAGES.map((p) => `  <url><loc>${SITE.url}/${l.code}/${p.f
 </urlset>
 `);
 if (SITE.customDomain) fs.writeFileSync(path.join(DIST, 'CNAME'), SITE.customDomain + '\n'); // GitHub Pages custom domain
-fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE.url}/sitemap.xml\n`);
+fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /admin/\nSitemap: ${SITE.url}/sitemap.xml\n`);
 console.log(`Built ${count} pages in ${LANGS.length} languages → ${path.relative(ROOT, DIST)}/`);

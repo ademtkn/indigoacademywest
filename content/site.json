@@ -1,0 +1,639 @@
+{
+  "school": {
+    "url": "https://ademtkn.github.io/indigoacademywest",
+    "customDomain": "",
+    "phones": [
+      {
+        "label": "+996 557 12 33 33",
+        "tel": "+996557123333"
+      }
+    ],
+    "whatsapp": "996557123333",
+    "instagram": "https://www.instagram.com/indigo_academy_west/",
+    "handle": "@indigo_academy_west",
+    "map": "https://2gis.kg/bishkek/firm/70000001033903228",
+    "network": "https://indigo.edu.kg/",
+    "aiEndpoint": ""
+  },
+  "pages": [
+    {
+      "key": "home",
+      "file": "index.html",
+      "menu": true
+    },
+    {
+      "key": "about",
+      "file": "about.html",
+      "menu": true
+    },
+    {
+      "key": "primary",
+      "file": "primary.html",
+      "menu": true
+    },
+    {
+      "key": "secondary",
+      "file": "secondary.html",
+      "menu": true
+    },
+    {
+      "key": "admissions",
+      "file": "admissions.html",
+      "menu": true
+    },
+    {
+      "key": "life",
+      "file": "school-life.html",
+      "menu": true
+    },
+    {
+      "key": "staff",
+      "file": "staff.html",
+      "menu": true
+    },
+    {
+      "key": "news",
+      "file": "news.html",
+      "menu": true
+    },
+    {
+      "key": "contact",
+      "file": "contact.html",
+      "menu": true
+    }
+  ],
+  "photos": [
+    {
+      "file": "photos/home-welcome.jpg",
+      "page": "home",
+      "label": {
+        "en": "Home: welcome",
+        "ky": "Башкы бет: кош келиңиз",
+        "ru": "Главная: приветствие"
+      }
+    },
+    {
+      "file": "photos/stage-1.jpg",
+      "page": "home",
+      "label": {
+        "en": "Home: Primary School card",
+        "ky": "Башкы бет: башталгыч мектеп картасы",
+        "ru": "Главная: карточка начальной школы"
+      }
+    },
+    {
+      "file": "photos/stage-2.jpg",
+      "page": "home",
+      "label": {
+        "en": "Home: High School card",
+        "ky": "Башкы бет: жогорку класстар картасы",
+        "ru": "Главная: карточка старшей школы"
+      }
+    },
+    {
+      "file": "photos/life-1.jpg",
+      "page": "home",
+      "label": {
+        "en": "Collage 1 (Home + School Life)",
+        "ky": "Коллаж 1 (Башкы бет + Мектеп турмушу)",
+        "ru": "Коллаж 1 (Главная + Жизнь школы)"
+      }
+    },
+    {
+      "file": "photos/life-2.jpg",
+      "page": "home",
+      "label": {
+        "en": "Collage 2 (Home + School Life)",
+        "ky": "Коллаж 2 (Башкы бет + Мектеп турмушу)",
+        "ru": "Коллаж 2 (Главная + Жизнь школы)"
+      }
+    },
+    {
+      "file": "photos/life-3.jpg",
+      "page": "home",
+      "label": {
+        "en": "Collage 3 (Home + School Life)",
+        "ky": "Коллаж 3 (Башкы бет + Мектеп турмушу)",
+        "ru": "Коллаж 3 (Главная + Жизнь школы)"
+      }
+    },
+    {
+      "file": "photos/life-4.jpg",
+      "page": "home",
+      "label": {
+        "en": "Home: school day",
+        "ky": "Башкы бет: мектеп күнү",
+        "ru": "Главная: школьный день"
+      }
+    },
+    {
+      "file": "photos/about-story.jpg",
+      "page": "about",
+      "label": {
+        "en": "About: our story",
+        "ky": "Мектеп жөнүндө: тарых",
+        "ru": "О школе: история"
+      }
+    },
+    {
+      "file": "photos/director.jpg",
+      "page": "about",
+      "label": {
+        "en": "About: director",
+        "ky": "Мектеп жөнүндө: директор",
+        "ru": "О школе: директор"
+      }
+    },
+    {
+      "file": "photos/singapore.jpg",
+      "page": "primary",
+      "label": {
+        "en": "Primary: Singapore method",
+        "ky": "Башталгыч: Сингапур методикасы",
+        "ru": "Начальная: сингапурская методика"
+      }
+    },
+    {
+      "file": "photos/primary-english.jpg",
+      "page": "primary",
+      "label": {
+        "en": "Primary: English",
+        "ky": "Башталгыч: англис тили",
+        "ru": "Начальная: английский"
+      }
+    },
+    {
+      "file": "photos/secondary-care.jpg",
+      "page": "secondary",
+      "label": {
+        "en": "High school: one-to-one",
+        "ky": "Жогорку класстар: жекече мамиле",
+        "ru": "Старшая: индивидуальный подход"
+      }
+    },
+    {
+      "file": "photos/secondary-english.jpg",
+      "page": "secondary",
+      "label": {
+        "en": "High school: English",
+        "ky": "Жогорку класстар: англис тили",
+        "ru": "Старшая: английский"
+      }
+    },
+    {
+      "file": "photos/news-instagram.jpg",
+      "page": "news",
+      "label": {
+        "en": "News: Instagram card",
+        "ky": "Жаңылыктар: Instagram",
+        "ru": "Новости: Instagram"
+      }
+    },
+    {
+      "file": "photos/news-whatsapp.jpg",
+      "page": "news",
+      "label": {
+        "en": "News: WhatsApp card",
+        "ky": "Жаңылыктар: WhatsApp",
+        "ru": "Новости: WhatsApp"
+      }
+    }
+  ],
+  "staff": [
+    {
+      "id": "director",
+      "dept": "lead",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Director",
+        "ky": "Директор",
+        "ru": "Директор"
+      },
+      "photo": "staff/director.jpg"
+    },
+    {
+      "id": "deputyPrimary",
+      "dept": "lead",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Deputy Director, Primary School",
+        "ky": "Директордун орун басары, башталгыч мектеп",
+        "ru": "Заместитель директора, начальная школа"
+      },
+      "photo": "staff/deputyPrimary.jpg"
+    },
+    {
+      "id": "deputySecondary",
+      "dept": "lead",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Deputy Director, Middle & High School",
+        "ky": "Директордун орун басары, орто жана жогорку класстар",
+        "ru": "Заместитель директора, средняя и старшая школа"
+      },
+      "photo": "staff/deputySecondary.jpg"
+    },
+    {
+      "id": "cambridge",
+      "dept": "lead",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Cambridge Programme Coordinator",
+        "ky": "Cambridge программасынын координатору",
+        "ru": "Координатор программы Cambridge"
+      },
+      "photo": "staff/cambridge.jpg"
+    },
+    {
+      "id": "primary1",
+      "dept": "primary",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Class teacher, Grade 1",
+        "ky": "Класс жетекчи, 1-класс",
+        "ru": "Классный руководитель, 1 класс"
+      },
+      "photo": "staff/primary1.jpg"
+    },
+    {
+      "id": "primary2",
+      "dept": "primary",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Class teacher, Grade 2",
+        "ky": "Класс жетекчи, 2-класс",
+        "ru": "Классный руководитель, 2 класс"
+      },
+      "photo": "staff/primary2.jpg"
+    },
+    {
+      "id": "primary3",
+      "dept": "primary",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Class teacher, Grade 3",
+        "ky": "Класс жетекчи, 3-класс",
+        "ru": "Классный руководитель, 3 класс"
+      },
+      "photo": "staff/primary3.jpg"
+    },
+    {
+      "id": "primary4",
+      "dept": "primary",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Class teacher, Grade 4",
+        "ky": "Класс жетекчи, 4-класс",
+        "ru": "Классный руководитель, 4 класс"
+      },
+      "photo": "staff/primary4.jpg"
+    },
+    {
+      "id": "primary5",
+      "dept": "primary",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Class teacher, Grade 5",
+        "ky": "Класс жетекчи, 5-класс",
+        "ru": "Классный руководитель, 5 класс"
+      },
+      "photo": "staff/primary5.jpg"
+    },
+    {
+      "id": "primary6",
+      "dept": "primary",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Class teacher, Grade 6",
+        "ky": "Класс жетекчи, 6-класс",
+        "ru": "Классный руководитель, 6 класс"
+      },
+      "photo": "staff/primary6.jpg"
+    },
+    {
+      "id": "native1",
+      "dept": "english",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "English teacher (native speaker)",
+        "ky": "Англис тили мугалими (эне тили англис)",
+        "ru": "Учитель английского (носитель языка)"
+      },
+      "photo": "staff/native1.jpg"
+    },
+    {
+      "id": "native2",
+      "dept": "english",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "English teacher (native speaker)",
+        "ky": "Англис тили мугалими (эне тили англис)",
+        "ru": "Учитель английского (носитель языка)"
+      },
+      "photo": "staff/native2.jpg"
+    },
+    {
+      "id": "english1",
+      "dept": "english",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "English teacher",
+        "ky": "Англис тили мугалими",
+        "ru": "Учитель английского языка"
+      },
+      "photo": "staff/english1.jpg"
+    },
+    {
+      "id": "english2",
+      "dept": "english",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "English teacher",
+        "ky": "Англис тили мугалими",
+        "ru": "Учитель английского языка"
+      },
+      "photo": "staff/english2.jpg"
+    },
+    {
+      "id": "math",
+      "dept": "secondary",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Mathematics",
+        "ky": "Математика",
+        "ru": "Математика"
+      },
+      "photo": "staff/math.jpg"
+    },
+    {
+      "id": "science",
+      "dept": "secondary",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Physics",
+        "ky": "Физика",
+        "ru": "Физика"
+      },
+      "photo": "staff/science.jpg"
+    },
+    {
+      "id": "chembio",
+      "dept": "secondary",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Chemistry & biology",
+        "ky": "Химия жана биология",
+        "ru": "Химия и биология"
+      },
+      "photo": "staff/chembio.jpg"
+    },
+    {
+      "id": "cs",
+      "dept": "secondary",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Computer science",
+        "ky": "Информатика",
+        "ru": "Информатика"
+      },
+      "photo": "staff/cs.jpg"
+    },
+    {
+      "id": "humanities",
+      "dept": "secondary",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "History & global perspectives",
+        "ky": "Тарых жана Global Perspectives",
+        "ru": "История и Global Perspectives"
+      },
+      "photo": "staff/humanities.jpg"
+    },
+    {
+      "id": "russian",
+      "dept": "secondary",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Russian language & literature",
+        "ky": "Орус тили жана адабияты",
+        "ru": "Русский язык и литература"
+      },
+      "photo": "staff/russian.jpg"
+    },
+    {
+      "id": "kyrgyz",
+      "dept": "secondary",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Kyrgyz language & literature",
+        "ky": "Кыргыз тили жана адабияты",
+        "ru": "Кыргызский язык и литература"
+      },
+      "photo": "staff/kyrgyz.jpg"
+    },
+    {
+      "id": "robotics",
+      "dept": "extra",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Robotics",
+        "ky": "Робототехника",
+        "ru": "Робототехника"
+      },
+      "photo": "staff/robotics.jpg"
+    },
+    {
+      "id": "chess",
+      "dept": "extra",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Chess",
+        "ky": "Шахмат",
+        "ru": "Шахматы"
+      },
+      "photo": "staff/chess.jpg"
+    },
+    {
+      "id": "komuz",
+      "dept": "extra",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Komuz",
+        "ky": "Комуз",
+        "ru": "Комуз"
+      },
+      "photo": "staff/komuz.jpg"
+    },
+    {
+      "id": "art",
+      "dept": "extra",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Art & music",
+        "ky": "Искусство жана музыка",
+        "ru": "Искусство и музыка"
+      },
+      "photo": "staff/art.jpg"
+    },
+    {
+      "id": "pe",
+      "dept": "extra",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Physical education",
+        "ky": "Дене тарбия",
+        "ru": "Физкультура"
+      },
+      "photo": "staff/pe.jpg"
+    },
+    {
+      "id": "psychologist",
+      "dept": "support",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "School psychologist",
+        "ky": "Мектеп психологу",
+        "ru": "Школьный психолог"
+      },
+      "photo": "staff/psychologist.jpg"
+    },
+    {
+      "id": "nurse",
+      "dept": "support",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "School nurse",
+        "ky": "Медайым",
+        "ru": "Медсестра"
+      },
+      "photo": "staff/nurse.jpg"
+    },
+    {
+      "id": "admissions",
+      "dept": "support",
+      "name": {
+        "en": "",
+        "ky": "",
+        "ru": ""
+      },
+      "role": {
+        "en": "Admissions officer",
+        "ky": "Кабыл алуу бөлүмү",
+        "ru": "Приёмная комиссия"
+      },
+      "photo": "staff/admissions.jpg"
+    }
+  ]
+}
