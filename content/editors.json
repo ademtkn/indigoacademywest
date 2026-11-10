@@ -1,22 +1,22 @@
 {
   "vault": {
-    "iv": "LvUrs3GHbYnxdBrl",
-    "data": "pvd13Q9ZS1T7it4vwkkIHBEjzTejfY2+vp8oRsQa4DczfNZgjT+1kWhNeVMyqiKwrEiMkNM4o/12gwOg4Yu1DOqg6defK0FvSGMWPJhz5du/mL72KDdf163/cQewJTjfKtFnJCMYRppItM1gCQhAX32HpBWlPPn/2w=="
+    "iv": "jrgi/Nl4hPotSK7S",
+    "data": "g73gDOIU4mWJph1rzcur9m+etAF2hHpwpXdwCuWEefgn/DeL9a6GYSh+MRZE6Joq1Rs8MTQclIZMi4pJM/InTIJPuLwtSgHoJQhM4Oe/onioH6Mta5KUSyvKOzt2ujvZXvUkm1k03zGlyzS1kzaeeoGTBKaW7lpR0w=="
   },
   "editors": [
     {
       "username": "west",
       "name": "West",
-      "role": "admin",
-      "salt": "5YflsYN9nD1uFYh1VkKnPg==",
+      "role": "editor",
+      "salt": "pfA1j9uG8F8hc6aQAKw6Ug==",
       "kdf": {
         "alg": "argon2id",
         "m": 65536,
         "t": 6,
         "p": 1
       },
-      "iv": "EKRfEcnLvz7vuoXe",
-      "key": "0a3MBOv778CtvwRpCnzm8V8YfxMA66iTZOjP6oX/tbPuP5jqVYGQcdwpacWUVb+i",
+      "iv": "7BytzeceALheI2ZO",
+      "key": "43Ja56FJq214HxVaPUor8FIUv0HBtcHgJYIRKt2TUoHgIvpDAXI4bCxQ0WT08Nhw",
       "created": "2026-11-10"
     }
   ]
