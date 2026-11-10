@@ -18,8 +18,8 @@ Panelin kendi dili İngilizce, Kırgızca veya Rusça seçilebilir. Her metin ü
 | Kadro | Öğretmen ekleme / silme / sıralama, fotoğraf, isim ve görev (3 dilde), bölüm |
 | Okul bilgileri | Telefonlar, WhatsApp, Instagram, 2GIS, adres ve çalışma saatleri |
 
-**Yayınla** düğmesi değişiklikleri GitHub'a tek bir kayıt (commit) olarak gönderir. Ardından
-`.github/workflows/build.yml` siteyi otomatik derler; site yaklaşık 1–2 dakikada güncellenir.
+**Yayınla** düğmesi sayfaları tarayıcıda yeniden üretir ve içerikle birlikte GitHub'a tek bir kayıt (commit) olarak gönderir
+(Asylkech paneliyle aynı yöntem; GitHub Actions gerekmez). GitHub Pages siteyi yaklaşık 1 dakikada yayınlar.
 Panelde "Done! The site is updated" görünür (anahtarda Actions: Read izni varsa).
 
 ### Editörler (kullanıcı adı ve şifreyle giriş)
@@ -35,7 +35,7 @@ Asylkech ve Indigo Prime panelleriyle aynı yapı. Editörler panele **kullanıc
 1. Henüz editör olmadığı için giriş ekranı GitHub anahtarı ister. Aşağıdaki adımlarla anahtar oluşturup girin.
 2. **Editors → Turn on editor sign-in** düğmesine basın.
 3. İlk editörü (kendinizi) **Administrator** olarak ekleyin, sonra diğerlerini ekleyin ve **Publish**'e basın.
-4. 1–2 dakika sonra herkes kullanıcı adı ve şifresiyle girebilir. Sizin anahtarınız giriş ekranındaki
+4. Yaklaşık 1 dakika sonra herkes kullanıcı adı ve şifresiyle girebilir. Sizin anahtarınız giriş ekranındaki
    "Site owner? Sign in with a GitHub token" bağlantısıyla çalışmaya devam eder.
 
 **GitHub anahtarı:** https://github.com/settings/personal-access-tokens/new → Repository access: *Only select repositories* →
@@ -54,9 +54,9 @@ content/en|ky|ru.json  Her dilin tüm metinleri (panel düzenler)
 content/site.json      Okul bilgileri, menü/sayfa sırası, kadro, fotoğraf yerleri (panel düzenler)
 admin/                 Yönetim paneli (statik uygulama, GitHub API ile çalışır); auth.js editör girişi
 content/editors.json   Editör hesapları (şifreli; panel yönetir, admin/editors.json olarak yayınlanır)
-src/build.mjs          Sayfa şablonları; content/ dosyalarından siteyi docs/ klasörüne üretir
+src/site.mjs           Sayfa şablonları (saf üretici; hem Node'da hem panelde tarayıcıda çalışır)
+src/build.mjs          content/ dosyalarından siteyi docs/ klasörüne üretir (elle derleme)
 assets/css, js, img    Tasarım, betikler, logo ve fotoğraflar
-.github/workflows/     Her değişiklikte siteyi otomatik derleyen GitHub Action
 docs/                  Derlenmiş site (GitHub Pages bu klasörü yayınlar)
 ```
 
@@ -90,8 +90,6 @@ Sunucu yoksa asistan site metinlerinde anahtar kelime araması yapar.
 
 ## Yayın: GitHub Pages
 1. **Settings → Pages → Source: Deploy from a branch**, **Branch: `main`**, klasör **`/docs`** → **Save**.
-2. **Settings → Actions → General → Workflow permissions:** "Read and write permissions" seçili olmalı
-   (otomatik derlemenin `docs/` klasörünü kaydedebilmesi için).
-3. Adres: `https://ademtkn.github.io/indigoacademywest/` — panel: `…/indigoacademywest/admin/`
+2. Adres: `https://ademtkn.github.io/indigoacademywest/` — panel: `…/indigoacademywest/admin/`
 
 Alan adı bağlanınca panelde Okul bilgileri → Gelişmiş bölümünden site adresi ve alan adını girin (derleme `docs/CNAME` yazar).

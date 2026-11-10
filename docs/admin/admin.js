@@ -1,8 +1,8 @@
 // Indigo Academy West admin panel.
 // Editors sign in with a username and password (see auth.js); the site owner can also use a GitHub token.
 // A static app (served at /admin/ by GitHub Pages) that edits content/*.json and assets/img/ in the
-// GitHub repository through the GitHub API. Publishing makes one commit; the "Build site" workflow
-// (.github/workflows/build.yml) then rebuilds docs/ and GitHub Pages serves the new version.
+// GitHub repository through the GitHub API. Publishing makes one commit with the content and the
+// regenerated site (docs/, built in the browser by lib/site.mjs, the same generator as src/build.mjs).
 (function () {
   'use strict';
 
@@ -624,22 +624,36 @@
     var blobJobs = changed.map(function (k) {
       return gh('POST', repoPath() + '/git/blobs', { content: json(S.data[k]), encoding: 'utf-8' }).then(function (b) { entries.push({ path: FILES[k], mode: '100644', type: 'blob', sha: b.sha }); });
     }).concat(uploads.map(function (p) {
-      return gh('POST', repoPath() + '/git/blobs', { content: S.uploads[p].b64, encoding: 'base64' }).then(function (b) { entries.push({ path: IMG_ROOT + p, mode: '100644', type: 'blob', sha: b.sha }); });
+      // each photo goes to assets/ and to the published copy in docs/assets/
+      return gh('POST', repoPath() + '/git/blobs', { content: S.uploads[p].b64, encoding: 'base64' }).then(function (b) {
+        entries.push({ path: IMG_ROOT + p, mode: '100644', type: 'blob', sha: b.sha }, { path: 'docs/' + IMG_ROOT + p, mode: '100644', type: 'blob', sha: b.sha });
+      });
     }));
-    deletes.forEach(function (p) { entries.push({ path: IMG_ROOT + p, mode: '100644', type: 'blob', sha: null }); });
+    deletes.forEach(function (p) { entries.push(gone(IMG_ROOT + p), gone('docs/' + IMG_ROOT + p)); });
 
-    var base = S.head;
+    var base = S.head, blobs = S.blobs;
     Promise.all(blobJobs).then(function () {
       return gh('GET', repoPath() + '/git/ref/heads/' + CFG.branch);
     }).then(function (ref) {
       if (ref.object.sha === base.commit) return base;
-      // Someone published in the meantime: continue on top of theirs unless they changed the same files.
+      // Someone published in the meantime: continue on top of theirs unless they changed the same content or photos.
       return gh('GET', repoPath() + '/compare/' + base.commit + '...' + ref.object.sha).then(function (cmp) {
-        var ours = entries.map(function (e) { return e.path; });
+        var ours = entries.map(function (e) { return e.path; }).filter(function (x) { return x.indexOf('docs/') !== 0; });
         var clash = (cmp.files || []).some(function (f) { return ours.indexOf(f.filename) >= 0; });
         if (clash) { var e = new Error('conflict'); e.code = 'conflict'; throw e; }
-        return gh('GET', repoPath() + '/git/commits/' + ref.object.sha).then(function (c) { return { commit: c.sha, tree: c.tree.sha }; });
+        return gh('GET', repoPath() + '/git/commits/' + ref.object.sha).then(function (c) {
+          return gh('GET', repoPath() + '/git/trees/' + c.tree.sha + '?recursive=1').then(function (tree) {
+            blobs = {}; tree.tree.forEach(function (e) { if (e.type === 'blob') blobs[e.path] = e.sha; });
+            // take their version of the content files we did not change, so the rebuilt pages include both
+            return Promise.all(Object.keys(FILES).filter(function (k) { return changed.indexOf(k) < 0 && blobs[FILES[k]] && blobs[FILES[k]] !== S.blobs[FILES[k]]; }).map(function (k) {
+              return gh('GET', repoPath() + '/git/blobs/' + blobs[FILES[k]]).then(function (b) { var text = b64ToText(b.content); S.orig[k] = text; S.data[k] = JSON.parse(text); });
+            }));
+          }).then(function () { return { commit: c.sha, tree: c.tree.sha }; });
+        });
       });
+    }).then(function (parent) {
+      setBusy(true, t.building);
+      return rebuild(blobs).then(function (pages) { entries = entries.concat(pages); return parent; });
     }).then(function (parent) {
       return gh('POST', repoPath() + '/git/trees', { base_tree: parent.tree, tree: entries }).then(function (tree) {
         return gh('POST', repoPath() + '/git/commits', { message: message, tree: tree.sha, parents: [parent.commit] });
@@ -657,8 +671,44 @@
     }).catch(function (e) {
       setBusy(false);
       if (e.code === 'conflict') { toast(t.conflict, 'error', 12000); return reloadBase(); }
-      toast(t.error, 'error', 8000);
+      toast(t.error + (e && e.message ? ' (' + e.message + ')' : ''), 'error', 0);
     });
+  }
+
+  // ---------- rebuilding the published site (docs/) in the browser ----------
+  var gone = function (p) { return { path: p, mode: '100644', type: 'blob', sha: null }; };
+  // git's blob id of some bytes: lets us skip pages that did not change and version photos like src/build.mjs does
+  function gitSha(bytes) {
+    var head = new TextEncoder().encode('blob ' + bytes.length + '\0');
+    var all = new Uint8Array(head.length + bytes.length); all.set(head); all.set(bytes, head.length);
+    return crypto.subtle.digest('SHA-1', all).then(function (buf) {
+      return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+    });
+  }
+  function b64Bytes(b64) { var bin = atob(b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+  // → tree entries for every generated file that differs from the repository, and for pages that no longer exist
+  function rebuild(blobs) {
+    var upVer = {};
+    return Promise.all(Object.keys(S.uploads).map(function (p) { return gitSha(b64Bytes(S.uploads[p].b64)).then(function (x) { upVer[p] = x.slice(0, 8); }); }))
+      .then(function () { return import('./lib/site.mjs?v=' + Date.now()); })
+      .then(function (mod) {
+        var imageVersion = function (rel) {
+          if (upVer[rel]) return upVer[rel];
+          if (S.deletes[rel]) return null;
+          var sha = blobs[IMG_ROOT + rel];
+          return sha ? sha.slice(0, 8) : null;
+        };
+        var out = mod.generate({ content: { en: S.data.en, ky: S.data.ky, ru: S.data.ru, site: S.data.site, editors: S.data.editors }, imageVersion: imageVersion }).files;
+        var entries = [], enc = new TextEncoder();
+        return Promise.all(Object.keys(out).map(function (p) {
+          return gitSha(enc.encode(out[p])).then(function (x) { if (blobs[p] !== x) entries.push({ path: p, mode: '100644', type: 'blob', content: out[p] }); });
+        })).then(function () {
+          Object.keys(blobs).forEach(function (p) {
+            if (/^docs\/(en|ky|ru)\/[^/]+\.html$|^docs\/CNAME$/.test(p) && !Object.prototype.hasOwnProperty.call(out, p)) entries.push(gone(p));
+          });
+          return entries;
+        });
+      });
   }
   function refreshBlobs() {
     return gh('GET', repoPath() + '/git/trees/' + S.head.tree + '?recursive=1').then(function (tree) {
@@ -671,18 +721,18 @@
     var mine = clone(S.data);
     return loadAll().then(function () { S.data = mine; updateBar(); render(); });
   }
-  // Follow the "Build site" workflow run for the published commit (needs Actions: read; otherwise a plain message).
+  // Follow GitHub Pages' deployment of the published commit (needs Actions: read; otherwise a plain message).
   function watchBuild(sha) {
     var t = T().publish, tries = 0;
     toast(t.saved, 'ok', 0);
     (function poll() {
       tries++;
       gh('GET', repoPath() + '/actions/runs?head_sha=' + sha + '&per_page=5').then(function (r) {
-        var run = (r.workflow_runs || [])[0];
+        var runs = r.workflow_runs || [];
+        var run = runs.filter(function (x) { return /pages/i.test(x.name || ''); })[0] || runs[0];
         if (!run) { if (tries < 20) return setTimeout(poll, 6000); return toast(t.unknownStatus, 'ok', 8000); }
         if (run.status !== 'completed') { toast(t.building, 'ok', 0); return setTimeout(poll, 6000); }
-        // the Pages deployment follows the build by a few seconds
-        if (run.conclusion === 'success') setTimeout(function () { toast(t.live, 'ok', 10000); }, 25000);
+        if (run.conclusion === 'success') toast(t.live, 'ok', 10000);
         else toast(t.failedBuild, 'error', 0);
       }, function () { toast(t.unknownStatus, 'ok', 8000); });
     })();
@@ -881,7 +931,8 @@
     user.addEventListener('input', function () { user.dataset.touched = '1'; });
     var add = h('button', { type: 'button', class: 'btn btn--primary', onclick: function () {
       var u = user.value.trim().toLowerCase();
-      var m = !AUTH.USERNAME.test(u) ? t.errUser : list.some(function (x) { return x.username === u; }) ? t.errExists : pp.check();
+      var m = !AUTH.USERNAME.test(u) ? t.errUser : list.some(function (x) { return x.username === u; }) ? t.errExists
+        : role.value !== 'admin' && !list.some(function (x) { return x.role === 'admin'; }) ? t.firstAdmin : pp.check();
       err.textContent = m; if (m) return;
       busy(add, true);
       AUTH.lock(S.me.k, pp.a.value, { username: u, name: name.value.trim(), role: role.value }).then(function (rec) {
