@@ -1,4 +1,23 @@
 {
-  "vault": null,
-  "editors": []
+  "vault": {
+    "iv": "LvUrs3GHbYnxdBrl",
+    "data": "pvd13Q9ZS1T7it4vwkkIHBEjzTejfY2+vp8oRsQa4DczfNZgjT+1kWhNeVMyqiKwrEiMkNM4o/12gwOg4Yu1DOqg6defK0FvSGMWPJhz5du/mL72KDdf163/cQewJTjfKtFnJCMYRppItM1gCQhAX32HpBWlPPn/2w=="
+  },
+  "editors": [
+    {
+      "username": "west",
+      "name": "West",
+      "role": "admin",
+      "salt": "5YflsYN9nD1uFYh1VkKnPg==",
+      "kdf": {
+        "alg": "argon2id",
+        "m": 65536,
+        "t": 6,
+        "p": 1
+      },
+      "iv": "EKRfEcnLvz7vuoXe",
+      "key": "0a3MBOv778CtvwRpCnzm8V8YfxMA66iTZOjP6oX/tbPuP5jqVYGQcdwpacWUVb+i",
+      "created": "2026-11-10"
+    }
+  ]
 }
