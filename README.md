@@ -22,54 +22,38 @@ Panelin kendi dili İngilizce, Kırgızca veya Rusça seçilebilir. Her metin ü
 `.github/workflows/build.yml` siteyi otomatik derler; site yaklaşık 1–2 dakikada güncellenir.
 Panelde "Done! The site is updated" görünür (anahtarda Actions: Read izni varsa).
 
-### Editörler ve şifreli giriş
-Editörler panele **kullanıcı adı ve şifre** ile girer. Şifre **4–6 karakter, sadece Latin harf ve rakam** olabilir
-(ör. `ak47m2`). Yöneticiler panelin **Editörler** bölümünden editör ekler, siler, engeller, rolünü değiştirir ve yeni şifre verir.
-Herkes kendi şifresini **Hesabım** bölümünden değiştirebilir.
+### Editörler (kullanıcı adı ve şifreyle giriş)
+Asylkech ve Indigo Prime panelleriyle aynı yapı. Editörler panele **kullanıcı adı ve şifre** ile girer; GitHub anahtarı gerekmez, sunucu da gerekmez.
+Şifre: yalnızca Latin harf ve rakam, **4–6 karakter** (büyük/küçük harf ayrımı var).
 
-Kısa şifreler genelde kolay tahmin edilir. Bu yüzden şifreler herkese açık depoda değil, ayrı bir giriş sunucusunda
-(`admin-server/`, ücretsiz Cloudflare Worker) tutulur ve korunur:
-- Şifreler sadece şifrelenmiş (PBKDF2 özeti) olarak saklanır.
-- Aynı hesaba 5 yanlış denemede hesap 15 dakika kilitlenir; aynı adresten 20 yanlış denemede o adres kilitlenir.
-- Editörler GitHub anahtarını hiç görmez. Sunucu onların sadece `content/*.json` dosyalarını ve `assets/img/photos|staff`
-  altındaki fotoğrafları değiştirmesine izin verir. Kodu, tasarımı veya otomatik derlemeyi değiştiremezler, siteyi eski bir sürüme döndüremezler.
-- Her yayın, yapan editörün adıyla kaydedilir (GitHub geçmişinde görünür).
+- **Roller:** *Yönetici* içeriği düzenler, editör ekler/siler, rolleri ve şifreleri değiştirir. *Editör* yalnızca içeriği düzenler ve kendi şifresini değiştirir.
+- **Kim girdi:** Sol menünün altında giriş yapan kişinin adı görünür; her yayın GitHub geçmişine o kişinin adıyla yazılır.
+- **Hatalı denemeler:** 5 hatalı şifreden sonra giriş 30 saniye bekletilir, her yeni hatada süre ikiye katlanır.
+- **Anahtarın süresi dolarsa:** Bir yönetici **Editors → Replace GitHub token** bölümüne yeni anahtarı yapıştırır ve yayınlar; editörlerin şifreleri değişmez.
 
-#### Giriş sunucusunu kurmak (bir kere, ~10 dakika)
-Gerekenler: ücretsiz bir Cloudflare hesabı ve bilgisayarda Node.js.
-1. GitHub'da sunucu için bir anahtar oluşturun: https://github.com/settings/personal-access-tokens/new
-   → Repository access: `indigoacademywest` → Contents: **Read and write**, Actions: **Read-only**.
-2. Terminalde:
-   ```
-   cd admin-server
-   npx wrangler login
-   npx wrangler kv namespace create USERS      # çıkan "id" değerini wrangler.toml içindeki id alanına yazın
-   npx wrangler secret put GITHUB_TOKEN         # 1. adımdaki anahtarı yapıştırın
-   npx wrangler secret put SETUP_CODE           # uzun, sadece sizin bildiğiniz bir ifade (ilk yönetici için)
-   npx wrangler deploy                          # sonunda https://indigo-west-admin.<hesap>.workers.dev adresi çıkar
-   ```
-3. Depodaki `admin/config.json` dosyasına bu adresi yazın (GitHub'da dosyayı açıp kalem simgesiyle düzenleyebilirsiniz):
-   ```json
-   { "api": "https://indigo-west-admin.<hesap>.workers.dev" }
-   ```
-4. Site güncellendikten sonra paneli açın. Henüz kullanıcı olmadığı için **ilk yönetici** ekranı gelir:
-   SETUP_CODE'u, adınızı, kullanıcı adınızı ve şifrenizi girin. Sonra **Editörler** bölümünden editörleri ekleyin.
+**İlk kurulum (bir kere):**
+1. Henüz editör olmadığı için giriş ekranı GitHub anahtarı ister. Aşağıdaki adımlarla anahtar oluşturup girin.
+2. **Editors → Turn on editor sign-in** düğmesine basın.
+3. İlk editörü (kendinizi) **Administrator** olarak ekleyin, sonra diğerlerini ekleyin ve **Publish**'e basın.
+4. 1–2 dakika sonra herkes kullanıcı adı ve şifresiyle girebilir. Sizin anahtarınız giriş ekranındaki
+   "Site owner? Sign in with a GitHub token" bağlantısıyla çalışmaya devam eder.
 
-Sitenin kendi alan adı bağlanınca bu adresi `admin-server/wrangler.toml` içindeki `ALLOWED_ORIGINS` listesine ekleyip
-`npx wrangler deploy` ile sunucuyu güncelleyin.
+**GitHub anahtarı:** https://github.com/settings/personal-access-tokens/new → Repository access: *Only select repositories* →
+`indigoacademywest` → Permissions: **Contents: Read and write**, **Actions: Read-only** (isteğe bağlı).
 
-#### Site sahibi için yedek giriş (GitHub anahtarı)
-Giriş sunucusu kurulmadan önce, ya da sunucuya ulaşılamadığında, site sahibi giriş ekranındaki
-"Site owner: sign in with a GitHub key" bağlantısıyla kendi GitHub anahtarıyla girebilir:
-https://github.com/settings/personal-access-tokens/new → Repository access: `indigoacademywest` → Contents: **Read and write**.
-Bu anahtar kimseyle paylaşılmamalıdır; editörler her zaman kullanıcı adı ve şifreyle girmelidir.
+**Güvenlik notu:** Sunucu olmadığı için GitHub anahtarı, `content/editors.json` (yayında `admin/editors.json`) içinde her editörün
+şifresiyle şifrelenmiş olarak herkese açık durur. Şifreden anahtar türetmek için bilerek yavaş ve çok bellek kullanan Argon2id
+kullanılır (`admin/auth.js`), yani her tahmin pahalıdır. Yine de bu dosyayı alan biri şifreleri kendi bilgisayarında denemeye çalışabilir:
+harf+rakam karışık 6 karakterli bir şifre (ör. `k7Rm2q`) çok uzun sürer, ama `123456` gibi yalnızca rakamlı bir şifre kısa sürede bulunur. Bu yüzden:
+- Her editöre farklı ve harf+rakam karışık şifre verin (panelde "Create a password" düğmesi böyle bir şifre üretir).
+- GitHub anahtarına yalnızca bu depo için Contents izni verin.
 
 ## Yapı
 ```
 content/en|ky|ru.json  Her dilin tüm metinleri (panel düzenler)
 content/site.json      Okul bilgileri, menü/sayfa sırası, kadro, fotoğraf yerleri (panel düzenler)
-admin/                 Yönetim paneli (statik uygulama); admin/config.json giriş sunucusunun adresi
-admin-server/          Editörlerin şifreli girişi için Cloudflare Worker (kullanıcılar, kilitleme, GitHub'a güvenli erişim)
+admin/                 Yönetim paneli (statik uygulama, GitHub API ile çalışır); auth.js editör girişi
+content/editors.json   Editör hesapları (şifreli; panel yönetir, admin/editors.json olarak yayınlanır)
 src/build.mjs          Sayfa şablonları; content/ dosyalarından siteyi docs/ klasörüne üretir
 assets/css, js, img    Tasarım, betikler, logo ve fotoğraflar
 .github/workflows/     Her değişiklikte siteyi otomatik derleyen GitHub Action

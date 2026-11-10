@@ -857,6 +857,9 @@ fs.cpSync(path.join(ROOT, 'assets'), path.join(DIST, 'assets'), { recursive: tru
 // Admin panel: a static app that edits content/ and assets/img/ through the GitHub API (see admin/README in README.md)
 fs.cpSync(path.join(ROOT, 'admin'), path.join(DIST, 'admin'), { recursive: true });
 fs.writeFileSync(path.join(DIST, 'admin', 'icons.json'), JSON.stringify(ICONS));
+// Editor accounts for the admin sign-in (the GitHub token inside is encrypted; see admin/auth.js)
+const editorsFile = path.join(ROOT, 'content', 'editors.json');
+fs.writeFileSync(path.join(DIST, 'admin', 'editors.json'), fs.existsSync(editorsFile) ? fs.readFileSync(editorsFile) : '{"vault":null,"editors":[]}\n');
 
 let count = 0;
 for (const t of LANGS) {
