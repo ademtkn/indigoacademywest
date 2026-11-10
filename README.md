@@ -22,22 +22,54 @@ Panelin kendi dili İngilizce, Kırgızca veya Rusça seçilebilir. Her metin ü
 `.github/workflows/build.yml` siteyi otomatik derler; site yaklaşık 1–2 dakikada güncellenir.
 Panelde "Done! The site is updated" görünür (anahtarda Actions: Read izni varsa).
 
-### Giriş anahtarı (her kullanıcı için bir tane)
-Panel sunucu gerektirmez; giriş için GitHub "fine-grained" erişim anahtarı kullanılır:
-1. GitHub'a `ademtkn` olarak girin → https://github.com/settings/personal-access-tokens/new
-2. İsim verin (ör. "Site admin – Aigul"), süre seçin.
-3. **Repository access:** Only select repositories → `indigoacademywest`.
-4. **Repository permissions:** Contents → **Read and write** (isteğe bağlı: Actions → Read-only).
-5. Oluşan anahtarı panelin giriş ekranına yapıştırın.
+### Editörler ve şifreli giriş
+Editörler panele **kullanıcı adı ve şifre** ile girer. Şifre **4–6 karakter, sadece Latin harf ve rakam** olabilir
+(ör. `ak47m2`). Yöneticiler panelin **Editörler** bölümünden editör ekler, siler, engeller, rolünü değiştirir ve yeni şifre verir.
+Herkes kendi şifresini **Hesabım** bölümünden değiştirebilir.
 
-Her personele ayrı anahtar verin; işten ayrılan kişinin anahtarını aynı sayfadan iptal edin.
-Anahtar sadece o kişinin tarayıcısında saklanır ("Beni hatırla" işaretli değilse sekme kapanınca silinir).
+Kısa şifreler genelde kolay tahmin edilir. Bu yüzden şifreler herkese açık depoda değil, ayrı bir giriş sunucusunda
+(`admin-server/`, ücretsiz Cloudflare Worker) tutulur ve korunur:
+- Şifreler sadece şifrelenmiş (PBKDF2 özeti) olarak saklanır.
+- Aynı hesaba 5 yanlış denemede hesap 15 dakika kilitlenir; aynı adresten 20 yanlış denemede o adres kilitlenir.
+- Editörler GitHub anahtarını hiç görmez. Sunucu onların sadece `content/*.json` dosyalarını ve `assets/img/photos|staff`
+  altındaki fotoğrafları değiştirmesine izin verir. Kodu, tasarımı veya otomatik derlemeyi değiştiremezler, siteyi eski bir sürüme döndüremezler.
+- Her yayın, yapan editörün adıyla kaydedilir (GitHub geçmişinde görünür).
+
+#### Giriş sunucusunu kurmak (bir kere, ~10 dakika)
+Gerekenler: ücretsiz bir Cloudflare hesabı ve bilgisayarda Node.js.
+1. GitHub'da sunucu için bir anahtar oluşturun: https://github.com/settings/personal-access-tokens/new
+   → Repository access: `indigoacademywest` → Contents: **Read and write**, Actions: **Read-only**.
+2. Terminalde:
+   ```
+   cd admin-server
+   npx wrangler login
+   npx wrangler kv namespace create USERS      # çıkan "id" değerini wrangler.toml içindeki id alanına yazın
+   npx wrangler secret put GITHUB_TOKEN         # 1. adımdaki anahtarı yapıştırın
+   npx wrangler secret put SETUP_CODE           # uzun, sadece sizin bildiğiniz bir ifade (ilk yönetici için)
+   npx wrangler deploy                          # sonunda https://indigo-west-admin.<hesap>.workers.dev adresi çıkar
+   ```
+3. Depodaki `admin/config.json` dosyasına bu adresi yazın (GitHub'da dosyayı açıp kalem simgesiyle düzenleyebilirsiniz):
+   ```json
+   { "api": "https://indigo-west-admin.<hesap>.workers.dev" }
+   ```
+4. Site güncellendikten sonra paneli açın. Henüz kullanıcı olmadığı için **ilk yönetici** ekranı gelir:
+   SETUP_CODE'u, adınızı, kullanıcı adınızı ve şifrenizi girin. Sonra **Editörler** bölümünden editörleri ekleyin.
+
+Sitenin kendi alan adı bağlanınca bu adresi `admin-server/wrangler.toml` içindeki `ALLOWED_ORIGINS` listesine ekleyip
+`npx wrangler deploy` ile sunucuyu güncelleyin.
+
+#### Site sahibi için yedek giriş (GitHub anahtarı)
+Giriş sunucusu kurulmadan önce, ya da sunucuya ulaşılamadığında, site sahibi giriş ekranındaki
+"Site owner: sign in with a GitHub key" bağlantısıyla kendi GitHub anahtarıyla girebilir:
+https://github.com/settings/personal-access-tokens/new → Repository access: `indigoacademywest` → Contents: **Read and write**.
+Bu anahtar kimseyle paylaşılmamalıdır; editörler her zaman kullanıcı adı ve şifreyle girmelidir.
 
 ## Yapı
 ```
 content/en|ky|ru.json  Her dilin tüm metinleri (panel düzenler)
 content/site.json      Okul bilgileri, menü/sayfa sırası, kadro, fotoğraf yerleri (panel düzenler)
-admin/                 Yönetim paneli (statik uygulama, GitHub API ile çalışır)
+admin/                 Yönetim paneli (statik uygulama); admin/config.json giriş sunucusunun adresi
+admin-server/          Editörlerin şifreli girişi için Cloudflare Worker (kullanıcılar, kilitleme, GitHub'a güvenli erişim)
 src/build.mjs          Sayfa şablonları; content/ dosyalarından siteyi docs/ klasörüne üretir
 assets/css, js, img    Tasarım, betikler, logo ve fotoğraflar
 .github/workflows/     Her değişiklikte siteyi otomatik derleyen GitHub Action

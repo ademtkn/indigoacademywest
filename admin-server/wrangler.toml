@@ -1,0 +1,21 @@
+# Sign-in server for the admin panel: `npx wrangler deploy` (see README, "Editörler ve şifreli giriş")
+name = "indigo-west-admin"
+main = "worker.mjs"
+compatibility_date = "2026-09-01"
+
+[vars]
+GITHUB_REPO = "ademtkn/indigoacademywest"
+BRANCH = "main"
+# Sites allowed to use this server (add the school's own domain when it is connected)
+ALLOWED_ORIGINS = "https://ademtkn.github.io"
+
+# Editors, sessions and lockouts. Create it once with:
+#   npx wrangler kv namespace create USERS
+# and put the id it prints here.
+[[kv_namespaces]]
+binding = "USERS"
+id = "PUT-THE-KV-NAMESPACE-ID-HERE"
+
+# Secrets (never commit them):
+#   npx wrangler secret put GITHUB_TOKEN   fine-grained token: indigoacademywest, Contents read & write, Actions read
+#   npx wrangler secret put SETUP_CODE     any long phrase; needed once to create the first administrator

@@ -21,7 +21,9 @@
   // Technical keys that are never shown
   var HIDDEN = ['code', 'htmlLang', 'label', 'langName', 'ogLocale'];
   var BUILT_IN = ['home', 'about', 'primary', 'secondary', 'admissions', 'life', 'staff', 'news', 'contact'];
-  var KEY_TOKEN = 'iaw-admin-token', KEY_UI = 'iaw-admin-ui';
+  var KEY_TOKEN = 'iaw-admin-token', KEY_SESSION = 'iaw-admin-session', KEY_UI = 'iaw-admin-ui';
+  // 4–6 Latin letters and digits; the sign-in server enforces the same rule
+  var PASSWORD_RE = /^[A-Za-z0-9]{4,6}$/, USERNAME_RE = /^[a-z0-9][a-z0-9._-]{2,29}$/;
 
   function store_(kind) {
     return {
@@ -39,6 +41,9 @@
   var T = function () { return I[uiLang]; };
 
   var S = {
+    // mode 'server': username + password through the sign-in server (admin-server/), token = session token
+    // mode 'token': the site owner's own GitHub key, sent straight to GitHub
+    server: '', mode: 'token', ownerLogin: false,
     token: null, user: null,
     head: null,          // { commit, tree, date, message }
     blobs: {},           // repo path → blob sha (assets/img/* and content/*)
@@ -106,16 +111,25 @@
   function json(x) { return JSON.stringify(x, null, 2) + '\n'; }
 
   // ---------- GitHub API ----------
+  // GitHub requests go straight to GitHub (token mode) or through the sign-in server (server mode),
+  // which answers the same paths under /gh/.
   function gh(method, path, body) {
-    return fetch(API + path, {
-      method: method,
-      headers: { Authorization: 'Bearer ' + S.token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
-      body: body ? JSON.stringify(body) : undefined,
-      cache: 'no-store',
-    }).then(function (r) {
+    return request(method, S.mode === 'server' ? S.server + '/gh' + path : API + path, body, S.mode !== 'server');
+  }
+  function api(method, path, body) { return request(method, S.server + path, body, false); }
+  function request(method, url, body, github) {
+    var headers = { Accept: 'application/json' };
+    if (S.token) headers.Authorization = 'Bearer ' + S.token;
+    if (github) { headers.Accept = 'application/vnd.github+json'; headers['X-GitHub-Api-Version'] = '2022-11-28'; }
+    if (body) headers['Content-Type'] = 'application/json';
+    return fetch(url, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' }).then(function (r) {
       if (r.status === 204) return null;
       return r.json().catch(function () { return {}; }).then(function (d) {
-        if (!r.ok) { var e = new Error(d.message || r.status); e.status = r.status; throw e; }
+        if (!r.ok) {
+          var e = new Error(d.message || r.status); e.status = r.status; e.code = d.error; e.data = d;
+          if (S.mode === 'server' && d.error === 'signed_out' && S.head) sessionLost();
+          throw e;
+        }
         return d;
       });
     });
@@ -130,6 +144,13 @@
     }, function (e) {
       e.code = e.status === 401 ? 'bad' : e.status === 404 || e.status === 403 ? 'noRepo' : 'network';
       throw e;
+    });
+  }
+
+  function passwordSignIn(username, password, remember) {
+    return api('POST', '/login', { username: username, password: password }).then(function (d) {
+      S.mode = 'server'; S.token = d.token; S.user = d.user;
+      (remember ? store : session).set(KEY_SESSION, JSON.stringify({ server: S.server, token: d.token }));
     });
   }
 
@@ -613,7 +634,7 @@
     var changed = changedFiles();
     var uploads = Object.keys(S.uploads), deletes = Object.keys(S.deletes);
     setBusy(true, t.saving);
-    var who = S.user ? (S.user.name || S.user.login) : '';
+    var who = S.user ? (S.user.name || S.user.login || S.user.username) : '';
     var message = (note || 'Update site content') + '\n\nPublished from the admin panel' + (who ? ' by ' + who : '') + '.';
     var entries = [];
     // texts as utf-8 blobs, photos as base64 blobs
@@ -685,7 +706,14 @@
   }
 
   // ---------- shell ----------
-  var NAV_ICON = { overview: 'home', menu: 'menu', content: 'text', images: 'photo', staff: 'people', school: 'school' };
+  var NAV_ICON = { overview: 'home', menu: 'menu', content: 'text', images: 'photo', staff: 'people', school: 'school', editors: 'key', account: 'user' };
+  UI_ICONS.key = '<circle cx="8" cy="14" r="4"/><path d="M11 11l9-9M16 6l3 3M14 8l2 2"/>';
+  UI_ICONS.user = '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4-7 8-7s7 2.5 8 7"/>';
+  function navViews() {
+    var v = ['overview', 'menu', 'content', 'images', 'staff', 'school'];
+    if (S.mode === 'server') { if (S.user && S.user.role === 'admin') v.push('editors'); v.push('account'); }
+    return v;
+  }
   var app = document.getElementById('app');
   var mainEl, barCount, publishBtn, discardBtn, toastEl, busyEl;
 
@@ -705,7 +733,7 @@
   function render() {
     document.documentElement.lang = uiLang;
     document.title = T().title + ' · Indigo Academy West';
-    if (!S.head) { if (app.querySelector('.login')) loginScreen(); return; }
+    if (!S.head || !S.token) { if (app.querySelector('.login')) loginScreen(); return; }
     var t = T();
     app.textContent = '';
     mainEl = h('main', { class: 'main', id: 'main' });
@@ -719,8 +747,9 @@
       h('div', { class: 'top-bar' }, barCount, discardBtn, publishBtn),
       h('div', { class: 'top-tools' }, uiSwitch(),
         h('a', { class: 'btn btn--ghost btn--small', href: SITE_URL, target: '_blank', rel: 'noopener', 'aria-label': t.top.view }, svgIcon('ext'), h('span', { class: 'btn-text', text: t.top.view })),
-        h('button', { type: 'button', class: 'btn btn--ghost btn--small', onclick: logout, title: S.user ? S.user.login : '', 'aria-label': t.top.logout }, svgIcon('out'), h('span', { class: 'btn-text', text: t.top.logout })))));
-    app.appendChild(h('nav', { class: 'side', 'aria-label': t.title }, h('ul', null, Object.keys(t.nav).map(function (v) {
+        h('button', { type: 'button', class: 'btn btn--ghost btn--small', onclick: logout, title: S.user ? S.user.login || S.user.username : '', 'aria-label': t.top.logout }, svgIcon('out'), h('span', { class: 'btn-text', text: t.top.logout })))));
+    if (navViews().indexOf(S.view) < 0) S.view = 'overview';
+    app.appendChild(h('nav', { class: 'side', 'aria-label': t.title }, h('ul', null, navViews().map(function (v) {
       return h('li', null, h('a', { href: '#' + v, 'aria-current': v === S.view ? 'page' : null, onclick: function (e) { e.preventDefault(); go(v); } }, svgIcon(NAV_ICON[v]), h('span', { text: t.nav[v] })));
     }))));
     app.appendChild(mainEl);
@@ -768,28 +797,54 @@
   }
   function confirmBox(text, extra, okLabel, onOk) { modal(text, extra ? [h('p', { text: extra })] : [], okLabel, onOk, T().menu.cancel); }
 
-  // ---------- sign-in screen ----------
-  function loginScreen(errCode) {
-    var t = T().login;
+  // ---------- sign-in screens ----------
+  function loginShell(children) {
     app.textContent = '';
+    var card = h('form', { class: 'login-card', novalidate: true },
+      h('div', { class: 'login-top' }, h('img', { src: '../assets/img/logo-round.png', alt: 'Indigo Academy', width: 84, height: 84 }), uiSwitch()),
+      h('p', { class: 'eyebrow', text: 'Indigo Academy West' }), children);
+    app.appendChild(h('div', { class: 'login' }, card));
+    return card;
+  }
+  // Password field limited to the 4–6 letters-and-digits rule, with a show/hide button
+  function passwordInput(id, autocomplete) {
+    var inp = h('input', { type: 'password', id: id, maxlength: 6, autocomplete: autocomplete || 'current-password', spellcheck: 'false', autocapitalize: 'off', inputmode: 'text' });
+    inp.addEventListener('input', function () { var v = inp.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 6); if (v !== inp.value) inp.value = v; });
+    var btn = h('button', { type: 'button', class: 'btn btn--small btn--quiet pw-toggle' }, T().pw.show);
+    btn.addEventListener('click', function () { var show = inp.type === 'password'; inp.type = show ? 'text' : 'password'; btn.textContent = show ? T().pw.hide : T().pw.show; });
+    return { input: inp, el: h('div', { class: 'pw' }, inp, btn) };
+  }
+  function makePassword() {
+    // 6 characters with at least one letter and one digit; no look-alikes (0/O, 1/l/I)
+    var L = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ', D = '23456789', all = L + D, out;
+    do {
+      var r = crypto.getRandomValues(new Uint32Array(6));
+      out = Array.prototype.map.call(r, function (x) { return all[x % all.length]; }).join('');
+    } while (!/[A-Za-z]/.test(out) || !/\d/.test(out));
+    return out;
+  }
+
+  function loginScreen(errCode) {
+    if (S.server && !S.ownerLogin) return passwordScreen(errCode);
+    var t = T().login;
     var tok = h('input', { type: 'password', id: 'token', autocomplete: 'off', spellcheck: 'false', required: true, placeholder: 'github_pat_…' });
     var remember = h('input', { type: 'checkbox', id: 'remember', checked: true });
     var err = h('p', { class: 'form-error', role: 'alert', text: errCode ? t.errors[errCode] || t.errors.network : '' });
     var btn = h('button', { type: 'submit', class: 'btn btn--primary btn--block' }, t.submit);
-    var form = h('form', { class: 'login-card', novalidate: true },
-      h('div', { class: 'login-top' }, h('img', { src: '../assets/img/logo-round.png', alt: 'Indigo Academy', width: 84, height: 84 }), uiSwitch()),
-      h('p', { class: 'eyebrow', text: 'Indigo Academy West' }),
+    var form = loginShell([
       h('h1', { text: t.heading }), h('p', { class: 'muted', text: t.lead }),
       h('label', { for: 'token', class: 'field-label' }, t.token), tok,
       h('label', { class: 'check' }, remember, h('span', { text: t.remember })),
       err, btn,
       h('details', { class: 'help' }, h('summary', { text: t.help }), h('ol', null, t.steps.map(function (s) { return h('li', { text: s }); })),
-        h('a', { class: 'link', href: 'https://github.com/settings/personal-access-tokens/new', target: '_blank', rel: 'noopener' }, t.open, svgIcon('ext'))));
+        h('a', { class: 'link', href: 'https://github.com/settings/personal-access-tokens/new', target: '_blank', rel: 'noopener' }, t.open, svgIcon('ext'))),
+      S.server ? h('button', { type: 'button', class: 'linkish', onclick: function () { S.ownerLogin = false; loginScreen(); } }, t.pwLink) : null]);
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var v = tok.value.trim();
       if (!v) { err.textContent = t.errors.bad; tok.focus(); return; }
       btn.disabled = true; btn.textContent = t.checking; err.textContent = '';
+      S.mode = 'token';
       signIn(v).then(function () {
         (remember.checked ? store : session).set(KEY_TOKEN, v);
         start();
@@ -798,13 +853,196 @@
         err.textContent = t.errors[e2.code] || t.errors.network;
       });
     });
-    app.appendChild(h('div', { class: 'login' }, form));
     tok.focus();
   }
+
+  function passwordScreen(errText) {
+    var t = T().login, pw = T().pw;
+    var user = h('input', { type: 'text', id: 'username', autocomplete: 'username', autocapitalize: 'off', spellcheck: 'false' });
+    var pass = passwordInput('password');
+    var remember = h('input', { type: 'checkbox', id: 'remember', checked: false });
+    var err = h('p', { class: 'form-error', role: 'alert', text: errText && typeof errText === 'string' && !t.errors[errText] ? errText : '' });
+    var btn = h('button', { type: 'submit', class: 'btn btn--primary btn--block' }, t.submitPw);
+    var form = loginShell([
+      h('h1', { text: t.heading }), h('p', { class: 'muted', text: t.lead }),
+      h('label', { for: 'username', class: 'field-label' }, pw.username), user,
+      h('label', { for: 'password', class: 'field-label' }, pw.password), pass.el,
+      h('label', { class: 'check' }, remember, h('span', { text: t.remember })),
+      err, btn,
+      h('button', { type: 'button', class: 'linkish', onclick: function () { S.ownerLogin = true; loginScreen(); } }, t.ownerLink)]);
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var u = user.value.trim().toLowerCase(), p = pass.input.value;
+      if (!u || !p) { err.textContent = t.badLogin(); return; }
+      btn.disabled = true; btn.textContent = t.checking; err.textContent = '';
+      passwordSignIn(u, p, remember.checked).then(function () {
+        if (S.head) { render(); toast(null); } else start();
+      }, function (e2) {
+        btn.disabled = false; btn.textContent = t.submitPw;
+        err.textContent = e2.code === 'locked' ? t.locked : e2.code === 'bad_login' ? t.badLogin(e2.data && e2.data.attemptsLeft) : t.errors.network;
+        pass.input.value = ''; pass.input.focus();
+      });
+    });
+    (user.value ? pass.input : user).focus();
+    // the very first visit: no users yet → offer the one-time setup instead
+    api('GET', '/status').then(function (st) { if (st.setup && !S.head) setupScreen(); }, function () { err.textContent = t.errors.network; });
+  }
+
+  function setupScreen() {
+    var t = T().setup, pw = T().pw;
+    var code = h('input', { type: 'password', id: 'setup-code', autocomplete: 'off' });
+    var name = h('input', { type: 'text', id: 'setup-name', autocomplete: 'name' });
+    var user = h('input', { type: 'text', id: 'setup-user', autocomplete: 'username', autocapitalize: 'off', spellcheck: 'false' });
+    var pass = passwordInput('setup-pass', 'new-password'), again = passwordInput('setup-again', 'new-password');
+    var err = h('p', { class: 'form-error', role: 'alert' });
+    var form = loginShell([
+      h('h1', { text: t.heading }), h('p', { class: 'muted', text: t.lead }),
+      h('label', { for: 'setup-code', class: 'field-label' }, t.code), code,
+      h('label', { for: 'setup-name', class: 'field-label' }, t.name), name,
+      h('label', { for: 'setup-user', class: 'field-label' }, pw.username), user,
+      h('label', { for: 'setup-pass', class: 'field-label' }, pw.password), pass.el, h('p', { class: 'hint', text: pw.rule }),
+      h('label', { for: 'setup-again', class: 'field-label' }, pw.repeat), again.el,
+      err, h('button', { type: 'submit', class: 'btn btn--primary btn--block' }, t.submit)]);
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var u = user.value.trim().toLowerCase();
+      if (!USERNAME_RE.test(u)) { err.textContent = pw.badUser; return; }
+      if (!PASSWORD_RE.test(pass.input.value)) { err.textContent = pw.bad; return; }
+      if (pass.input.value !== again.input.value) { err.textContent = pw.mismatch; return; }
+      api('POST', '/setup', { setupCode: code.value, name: name.value.trim(), username: u, password: pass.input.value }).then(function () {
+        return passwordSignIn(u, pass.input.value, false).then(start);
+      }, function (e2) { err.textContent = e2.code === 'bad_setup_code' ? t.badCode : e2.code === 'already_set_up' ? '' : T().login.errors.network; if (e2.code === 'already_set_up') passwordScreen(); });
+    });
+    code.focus();
+  }
+
+  // The session ran out while editing: sign in again on top of the editor, keeping the unpublished changes.
+  function sessionLost() {
+    S.token = null; store.del(KEY_SESSION); session.del(KEY_SESSION);
+    passwordScreen(T().login.signedOut);
+  }
+
   function logout() {
-    var go_ = function () { store.del(KEY_TOKEN); session.del(KEY_TOKEN); S.token = null; S.head = null; loginScreen(); };
+    var go_ = function () {
+      if (S.mode === 'server' && S.token) api('POST', '/logout').catch(function () {});
+      store.del(KEY_TOKEN); session.del(KEY_TOKEN); store.del(KEY_SESSION); session.del(KEY_SESSION);
+      S.token = null; S.head = null; S.user = null; S.ownerLogin = false; toast(null); loginScreen();
+    };
     if (changeCount()) modal(T().publish.leave, [], T().top.logout, go_, T().discard.cancel); else go_();
   }
+
+  // ---------- editors (administrators only) and own account ----------
+  function when(iso) { return iso ? new Date(iso).toLocaleString(uiLang === 'ky' ? 'ky-KG' : uiLang === 'ru' ? 'ru-RU' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : ''; }
+  function apiError(e) {
+    var t = T();
+    if (e.code === 'weak_password') return t.pw.bad;
+    if (e.code === 'bad_username') return t.pw.badUser;
+    return (t.editors.errors[e.code]) || t.publish.error;
+  }
+
+  views.editors = function (main) {
+    var t = T().editors, pw = T().pw;
+    main.appendChild(h('header', { class: 'view-head' }, h('h1', { text: T().nav.editors }), h('p', { class: 'lead', text: t.lead })));
+    var list = h('ul', { class: 'user-list' }, h('li', { class: 'muted', text: T().loading }));
+    main.appendChild(list);
+    function load() {
+      api('GET', '/users').then(function (d) {
+        list.textContent = '';
+        d.users.forEach(function (u) { list.appendChild(userRow(u)); });
+      }, function (e) { list.textContent = ''; list.appendChild(h('li', { class: 'form-error', text: apiError(e) })); });
+    }
+    function change(u, patch) { return api('PATCH', '/users/' + encodeURIComponent(u.username), patch).then(load, function (e) { toast(apiError(e), 'error', 6000); }); }
+    function userRow(u) {
+      var me = S.user && u.username === S.user.username;
+      return h('li', { class: 'user-row' + (u.active ? '' : ' is-blocked') },
+        h('div', { class: 'user-main' },
+          h('span', { class: 'avatar', text: (u.name || u.username).trim().charAt(0).toUpperCase() }),
+          h('div', null,
+            h('strong', { text: u.name + (me ? ' (' + t.you + ')' : '') }),
+            h('span', { class: 'muted', text: u.username + ' · ' + t.lastLogin + ': ' + (u.lastLogin ? when(u.lastLogin) : t.never) })),
+          h('span', { class: 'badge badge--' + u.role, text: t.roles[u.role] }),
+          u.active ? null : h('span', { class: 'badge badge--blocked', text: t.inactive })),
+        h('div', { class: 'user-actions' },
+          h('button', { type: 'button', class: 'btn btn--small btn--quiet', onclick: function () { resetPassword(u); } }, svgIcon('key'), t.reset),
+          me ? null : h('button', { type: 'button', class: 'btn btn--small btn--quiet', onclick: function () { change(u, { role: u.role === 'admin' ? 'editor' : 'admin' }); } }, u.role === 'admin' ? t.makeEditor : t.makeAdmin),
+          me ? null : h('button', { type: 'button', class: 'btn btn--small btn--quiet', onclick: function () { change(u, { active: !u.active }); } }, u.active ? t.block : t.unblock),
+          me ? null : h('button', { type: 'button', class: 'icon-btn icon-btn--danger', title: t.del, 'aria-label': t.del, onclick: function () {
+            confirmBox(t.delConfirm(u.name), '', t.del, function () { api('DELETE', '/users/' + encodeURIComponent(u.username)).then(load, function (e) { toast(apiError(e), 'error', 6000); }); });
+          } }, svgIcon('trash'))));
+    }
+    function resetPassword(u) {
+      var p = passwordInput('reset-pass', 'new-password');
+      p.input.value = makePassword(); p.input.type = 'text';
+      modal(t.resetTitle(u.name), [h('label', { for: 'reset-pass', class: 'field-label' }, pw.password), p.el, h('p', { class: 'hint', text: pw.rule })], t.reset, function () {
+        if (!PASSWORD_RE.test(p.input.value)) { toast(pw.bad, 'error', 6000); return; }
+        api('PATCH', '/users/' + encodeURIComponent(u.username), { password: p.input.value }).then(function () { toast(t.resetDone + ' ' + p.input.value, 'ok', 0); load(); }, function (e) { toast(apiError(e), 'error', 6000); });
+      }, T().menu.cancel);
+    }
+
+    // add form
+    var name = h('input', { type: 'text', id: 'ed-name', autocomplete: 'off' });
+    var user = h('input', { type: 'text', id: 'ed-user', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
+    var pass = passwordInput('ed-pass', 'new-password');
+    var role = h('select', { id: 'ed-role' }, h('option', { value: 'editor' }, t.roles.editor), h('option', { value: 'admin' }, t.roles.admin));
+    var err = h('p', { class: 'form-error', role: 'alert' });
+    var form = h('form', { class: 'panel add-page', novalidate: true },
+      h('h2', { text: t.add }),
+      h('div', { class: 'form-grid' },
+        h('div', { class: 'field' }, h('label', { for: 'ed-name', class: 'field-label' }, t.name), name),
+        h('div', { class: 'field' }, h('label', { for: 'ed-user', class: 'field-label' }, pw.username), user),
+        h('div', { class: 'field' }, h('label', { for: 'ed-pass', class: 'field-label' }, pw.password), h('div', { class: 'pw-row' }, pass.el,
+          h('button', { type: 'button', class: 'btn btn--small btn--quiet', onclick: function () { pass.input.value = makePassword(); pass.input.type = 'text'; } }, pw.generate))),
+        h('div', { class: 'field' }, h('label', { for: 'ed-role', class: 'field-label' }, t.role), role)),
+      h('p', { class: 'hint', text: pw.rule + ' ' + t.tip }),
+      err, h('button', { type: 'submit', class: 'btn btn--primary' }, svgIcon('plus'), t.create));
+    // suggest a username from the name: "Aigul Asanova" → aigul.asanova (Cyrillic is transliterated)
+    name.addEventListener('input', function () { if (!user.dataset.touched) user.value = slugName(name.value); });
+    user.addEventListener('input', function () { user.dataset.touched = '1'; });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var u = user.value.trim().toLowerCase(), p = pass.input.value;
+      if (!USERNAME_RE.test(u)) { err.textContent = pw.badUser; return; }
+      if (!PASSWORD_RE.test(p)) { err.textContent = pw.bad; return; }
+      err.textContent = '';
+      api('POST', '/users', { name: name.value.trim(), username: u, password: p, role: role.value }).then(function (d) {
+        toast(t.created(d.user.name + ' (' + d.user.username + ')', p), 'ok', 0);
+        name.value = ''; user.value = ''; delete user.dataset.touched; pass.input.value = ''; role.value = 'editor';
+        load();
+      }, function (e2) { err.textContent = apiError(e2); });
+    });
+    main.appendChild(form);
+    load();
+  };
+  function slugName(s) {
+    var map = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', ң: 'n', о: 'o', ө: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ү: 'u', ф: 'f', х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sh', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya' };
+    return s.toLowerCase().split('').map(function (c) { return map[c] != null ? map[c] : c; }).join('')
+      .replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '').slice(0, 30);
+  }
+
+  views.account = function (main) {
+    var t = T().account, pw = T().pw;
+    main.appendChild(h('header', { class: 'view-head' }, h('h1', { text: T().nav.account }),
+      h('p', { class: 'lead' }, t.signedInAs + ' ', h('strong', { text: S.user.name }), ' (' + S.user.username + ', ' + T().editors.roles[S.user.role] + ')')));
+    var cur = passwordInput('acc-cur'), next = passwordInput('acc-new', 'new-password'), again = passwordInput('acc-again', 'new-password');
+    var err = h('p', { class: 'form-error', role: 'alert' });
+    var form = h('form', { class: 'panel add-page', novalidate: true },
+      h('p', { class: 'muted', text: t.lead }),
+      h('label', { for: 'acc-cur', class: 'field-label' }, t.current), cur.el,
+      h('label', { for: 'acc-new', class: 'field-label' }, t.next), next.el, h('p', { class: 'hint', text: pw.rule }),
+      h('label', { for: 'acc-again', class: 'field-label' }, pw.repeat), again.el,
+      err, h('button', { type: 'submit', class: 'btn btn--primary' }, t.save));
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!PASSWORD_RE.test(next.input.value)) { err.textContent = pw.bad; return; }
+      if (next.input.value !== again.input.value) { err.textContent = pw.mismatch; return; }
+      err.textContent = '';
+      api('POST', '/me/password', { current: cur.input.value, password: next.input.value }).then(function () {
+        [cur, next, again].forEach(function (x) { x.input.value = ''; });
+        toast(t.done, 'ok');
+      }, function (e2) { err.textContent = e2.code === 'bad_password' ? t.wrong : apiError(e2); });
+    });
+    main.appendChild(form);
+  };
 
   function start() {
     setBusy(true, T().loading);
@@ -819,9 +1057,22 @@
 
   window.addEventListener('beforeunload', function (e) { if (S.head && changeCount()) { e.preventDefault(); e.returnValue = T().publish.leave; return T().publish.leave; } });
 
-  var saved = store.get(KEY_TOKEN) || session.get(KEY_TOKEN);
-  if (saved) {
-    setBusy(true, T().loading);
-    signIn(saved).then(start, function (e) { setBusy(false); store.del(KEY_TOKEN); session.del(KEY_TOKEN); loginScreen(e.code); });
-  } else loginScreen();
+  // Boot: config.json names the sign-in server (empty → GitHub-key sign-in only).
+  setBusy(true, T().loading);
+  fetch('config.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; }).then(function (cfg) {
+    S.server = String(cfg.api || '').replace(/\/+$/, '');
+    var sess = null;
+    try { sess = JSON.parse(store.get(KEY_SESSION) || session.get(KEY_SESSION) || 'null'); } catch (e) {}
+    var key = store.get(KEY_TOKEN) || session.get(KEY_TOKEN);
+    if (S.server && sess && sess.server === S.server) {
+      S.mode = 'server'; S.token = sess.token;
+      return api('GET', '/me').then(function (d) { S.user = d.user; start(); }, function () { store.del(KEY_SESSION); session.del(KEY_SESSION); S.token = null; setBusy(false); loginScreen(); });
+    }
+    if (key) {
+      S.mode = 'token';
+      return signIn(key).then(start, function (e) { setBusy(false); store.del(KEY_TOKEN); session.del(KEY_TOKEN); loginScreen(e.code); });
+    }
+    setBusy(false);
+    loginScreen();
+  });
 })();
